@@ -53,6 +53,10 @@ ParamsSetup (
 	AEFX_CLR_STRUCT(def);
 
 	// RM-NOTE Here you make the parameters setup
+
+	// The next format:
+	//AEFX_CLR_STRUCT(def);
+	//PF_ADD_LAYER("Select layer", PF_LayerDefault_NONE, CHECK_LAYER_DISK_ID);
 	
 	out_data->num_params = SKELETON_NUM_PARAMS;
 
@@ -95,12 +99,21 @@ PreRender(
 			extra->output->pre_render_data = infoH;
 
 			// Params here
-			AEFX_CLR_STRUCT(params);
+			AEFX_CLR_STRUCT(params);  // Avoid problems. Use this to clearing PF_ParamDefs
+
+			// Checkout params here (Does that you want to chekout in the preRender)
+			/*ERR(PF_CHECKOUT_PARAM(in_data,
+				SHIFT_DISPLACE,
+				in_data->current_time,
+				in_data->time_step,
+				in_data->time_scale,
+				&displace_param));*/
 
 			if (!err) {
 				req.preserve_rgb_of_zero_alpha = FALSE;	//	Hey, we don't care about zero alpha
 				req.field = PF_Field_FRAME;				//	We want checkout_layer to provide a complete frame for sampling
 
+				//Here you Checkout the layers
 				ERR(extra->cb->checkout_layer(
 					in_data->effect_ref,
 					SKELETON_INPUT,
@@ -155,6 +168,7 @@ SmartRender(
 	AEGP_SuiteHandler 	suites(in_data->pica_basicP);
 	PF_EffectWorld		*input_worldP = NULL,
 						*output_worldP = NULL;
+	//PF_ParamDef channel_param, blend_param;
 	PF_WorldSuite2		*wsP = NULL;
 	PF_PixelFormat		format = PF_PixelFormat_INVALID;
 
@@ -177,9 +191,24 @@ SmartRender(
 					"Couldn't load suite.",
 					(void**)&wsP));
 
+				// You can also Checkout params here in the SmartRender
+				/*AEFX_CLR_STRUCT(blend_param);
+				ERR(PF_CHECKOUT_PARAM(in_data,
+					SMARTY_BLEND,
+					in_data->current_time,
+					in_data->time_step,
+					in_data->time_scale,
+					&blend_param));*/
+
 				infoP->ref = in_data->effect_ref;
 				infoP->samp_pb.src = input_worldP;
 				infoP->in_data = *in_data;
+
+				// Remember Checkin every params that you checkin 
+				// Not doing so causes dismal performance and leaks memory. 
+				// Once checked in, the fields in the PF_ParamDef will no longer be valid.
+				//ERR2(PF_CHECKIN_PARAM(in_data, &blend_param));
+				//ERR2(PF_CHECKIN_PARAM(in_data, &channel_param));
 
 				ERR(wsP->PF_GetPixelFormat(input_worldP, &format));
 
